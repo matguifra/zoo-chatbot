@@ -1,0 +1,15 @@
+# Arquivo de segredos - NUNCA sobe para o GitHub
+.streamlit/secrets.toml
+
+# Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ambiente virtual (se usar venv em vez de conda)
+venv/
+.env
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
