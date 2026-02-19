@@ -1,5 +1,5 @@
-# Arquivo de segredos - NUNCA sobe para o GitHub
-.streamlit/secrets.toml
+# Arquivo de segredos do Streamlit
+.streamlit/
 
 # Cache do Python
 __pycache__/

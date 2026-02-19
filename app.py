@@ -4,12 +4,14 @@ from langchain_groq import ChatGroq
 
 # ---------------------------------------------------------------
 # CONFIGURAÇÃO DO ANIMAL DO RECINTO
-# Troque estas variáveis para adaptar o totem a outro animal!
+# Troque estas variáveis para adaptar o totem a outro animal
 # ---------------------------------------------------------------
+# Animal do recinto
 ANIMAL_NOME = "Leão"
 ANIMAL_EMOJI = "🦁"
 ANIMAL_NOME_CIENTIFICO = "Panthera leo"
 
+# Prompt de sistema, que define o comportamento do guia virtual
 SYSTEM_PROMPT = f"""Você é um guia especialista do Zoológico, responsável pelo recinto do {ANIMAL_NOME} ({ANIMAL_NOME_CIENTIFICO}).
 
 Seu papel é responder perguntas dos visitantes sobre este animal de forma:
@@ -26,8 +28,8 @@ Mantenha as respostas com tamanho adequado para leitura em um tablet de totem:
 nem muito curtas, nem muito longas. Use parágrafos curtos.
 """
 # ---------------------------------------------------------------
-
-# Configuração da página
+# CONFIGURAÇÃO DA PÁGINA
+# ---------------------------------------------------------------
 st.set_page_config(
     page_title=f"Recinto do {ANIMAL_NOME}",
     page_icon=ANIMAL_EMOJI,
@@ -49,7 +51,10 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# Campo de input do chat
+# ---------------------------------------------------------------
+# LANGCHAIN + GROQ
+# ---------------------------------------------------------------
+# Campo de input do chat. Se há input, entra no if.
 if prompt := st.chat_input(f"Pergunte sobre o {ANIMAL_NOME}..."):
     # Exibe e salva a mensagem do usuário
     st.session_state.messages.append({"role": "user", "content": prompt})
