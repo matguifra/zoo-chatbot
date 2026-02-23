@@ -35,6 +35,18 @@ st.set_page_config(
     page_icon=ANIMAL_EMOJI,
     layout="centered",
 )
+# Senha
+if "password" not in st.session_state:
+    st.session_state.password = False
+
+if not st.session_state.password:
+    pwd = st.text_input("Digite a senha:")
+    if pwd == st.secrets["PASSWORD"]:
+        st.session_state.password = True
+        st.rerun()
+    elif pwd:
+        st.error("Senha incorreta.")
+    st.stop()
 
 # Título e boas-vindas
 st.title(f"{ANIMAL_EMOJI} Recinto do {ANIMAL_NOME}")
