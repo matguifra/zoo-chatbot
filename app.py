@@ -3,7 +3,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_groq import ChatGroq
 
 # ---------------------------------------------------------------
-# CONFIGURAÇÃO DO ANIMAL DO RECINTO
+# CONFIGURAÇÕES DO ANIMAL DO RECINTO E MODELO
 # Troque estas variáveis para adaptar o totem a outro animal
 # ---------------------------------------------------------------
 # Animal do recinto
@@ -27,6 +27,9 @@ e convide a pessoa a perguntar algo sobre eles.
 Mantenha as respostas com tamanho adequado para leitura em um tablet de totem:
 nem muito curtas, nem muito longas. Use parágrafos curtos.
 """
+# Modelo
+MODEL_NAME = "llama-3.3-70b-versatile"
+
 # ---------------------------------------------------------------
 # CONFIGURAÇÃO DA PÁGINA
 # ---------------------------------------------------------------
@@ -84,8 +87,8 @@ if prompt := st.chat_input(f"Pergunte sobre o {ANIMAL_NOME}..."):
     # Chama o modelo via Groq
     llm = ChatGroq(
         api_key=st.secrets["GROQ_API_KEY"],
-        model="llama-3.3-70b-versatile",
-        temperature=0.7,
+        model=MODEL_NAME,
+        temperature=0.5,
     )
 
     with st.chat_message("assistant"):
