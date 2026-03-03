@@ -8,9 +8,9 @@ import config
 import database as db
 
 # region SENHA
-# ------------------------------------------------------------------------------
+# -----------------------------------
 # SENHA PARA PROTEGER A COTA DO GROQ
-# ------------------------------------------------------------------------------
+# -----------------------------------
 if "password" not in st.session_state:
     st.session_state.password = False
 
@@ -25,14 +25,23 @@ if not st.session_state.password:
 # endregion
 
 # region PÁGINA
-# ------------------------------------------------------------------------------
+# -----------------------
 # CONFIGURAÇÃO DA PÁGINA
-# ------------------------------------------------------------------------------
+# -----------------------
 st.set_page_config(
     page_title=f"Recinto do {config.ANIMAL_NOME}",
     page_icon=config.ANIMAL_EMOJI,
     layout="centered",
 )
+
+# --- BOTÃO PARA NOVA SESSÃO ---
+with st.sidebar:
+    st.header("⚙️ Controle do Totem")
+    if st.button("🔄 Novo Visitante / Limpar Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.sessao_id = str(uuid.uuid4())
+        st.session_state.ultimo_id_db = None
+        st.rerun()
 
 # --- TÍTULO E BOAS VINDAS ---
 st.title(f"{config.ANIMAL_EMOJI} Recinto do {config.ANIMAL_NOME}")
@@ -58,9 +67,9 @@ for msg in st.session_state.messages:
 # endregion
 
 # region CORE
-# ---------------------------------------------------------------
+# ----------------------------
 # LANGCHAIN + GROQ + SUPABASE
-# ---------------------------------------------------------------
+# ----------------------------
 # Campo de input do chat. Se há input, entra no if.
 if prompt := st.chat_input(f"Pergunte sobre o {config.ANIMAL_NOME}..."):
     # Salva e exibe a mensagem do usuário
