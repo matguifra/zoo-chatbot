@@ -2,3 +2,4 @@ streamlit
 langchain
 langchain-groq
 st-supabase-connection
+uuid
