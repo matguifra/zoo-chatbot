@@ -7,7 +7,7 @@ from langchain_groq import ChatGroq
 import config
 import database as db
 
-# region SENHA
+# region PASSWORD
 # -----------------------------------
 # SENHA PARA PROTEGER A COTA DO GROQ
 # -----------------------------------
@@ -24,7 +24,7 @@ if not st.session_state.password:
     st.stop()
 # endregion
 
-# region PÁGINA
+# region PAGE
 # -----------------------
 # CONFIGURAÇÃO DA PÁGINA
 # -----------------------
