@@ -53,14 +53,14 @@ else:
     avaliacoes = df.dropna(subset=["feedback"])
     total_avaliacoes = len(avaliacoes)
 
-    likes = len(avaliacoes[avaliacoes["feedback"]])
-    dislikes = len(avaliacoes[~avaliacoes["feedback"]])
+    likes = len(avaliacoes[avaliacoes["feedback"].eq(True)])
+    dislikes = len(avaliacoes[avaliacoes["feedback"].eq(False)])
 
     taxa_aprovacao = (likes / total_avaliacoes * 100) if total_avaliacoes > 0 else 0
 
     # --- EXIBIÇÃO: LINHA DE MÉTRICAS E GRÁFICO ---
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("💬 Total de Perguntas", total_interacoes)
+    col1.metric("💬 Total de Mensagens", total_interacoes)
     col2.metric("👍 Likes", likes)
     col3.metric("👎 Dislikes", dislikes)
     col4.metric("⭐ Aprovação", f"{taxa_aprovacao:.1f}%")
