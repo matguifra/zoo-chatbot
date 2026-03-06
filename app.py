@@ -91,7 +91,7 @@ if prompt := st.chat_input(f"Pergunte sobre o {config.ANIMAL_NOME}..."):
     llm = ChatGroq(
         api_key=st.secrets["GROQ_API_KEY"],
         model=config.MODEL_NAME,
-        temperature=0.4,
+        temperature=config.TEMPERATURE,
     )
 
     # --- EXIBIÇÃO DA RESPOSTA E ARMAZENAGEM DA CONVERSA NO SUPABASE ---

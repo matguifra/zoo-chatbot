@@ -24,9 +24,10 @@ st.set_page_config(page_title="Dashboard Admin", page_icon="📊", layout="wide"
 st.title("📊 Painel de Desempenho do Totem")
 
 # Se o botão de recarregar for clicado, limpamos o cache para pegar dados novos
-if st.button("🔄 Atualizar Dados Agora"):
-    st.cache_data.clear()
-    st.rerun()
+with st.sidebar:
+    if st.button("🔄 Atualizar Dados Agora"):
+        st.cache_data.clear()
+        st.rerun()
 
 st.divider()
 # endregion
@@ -73,27 +74,29 @@ else:
 
     # --- EXIBIÇÃO: TABELA ---
     st.subheader("Últimas Interações")
-    # Prepara a tabela para exibição: remove colunas técnicas e renomeia
-    df_exibicao = df[["timestamp", "sessao", "pergunta", "resposta", "feedback"]].copy()
-    # Ordena pelas interações mais recentes e limita a quantidade exibida
-    df_exibicao = df_exibicao.sort_values(by="timestamp", ascending=False).head(100)
 
+    # Ordena pelas interações mais recentes e limita a quantidade exibida
+    df_exibicao = df.sort_values(by="timestamp", ascending=False).head(100)
     # Troca os valores True/False/None por emojis para legibilidade
     df_exibicao["feedback"] = (
         df_exibicao["feedback"].map({True: "👍", False: "👎"}).fillna("Sem voto")
     )
 
     st.dataframe(
-        df_exibicao,
+        data=df_exibicao,
         column_config={
+            # Formata o timestamp para o formato brasileiro
             "timestamp": st.column_config.DatetimeColumn(
-                "Data/Hora", format="DD/MM/YYYY - hh:mm a"
+                label="Data/Hora",
+                format="DD/MM/YYYY - HH:mm",
+                timezone="America/Sao_Paulo",
             ),
             "sessao": "ID Sessão",
             "pergunta": "Pergunta do Visitante",
             "resposta": "Resposta da IA",
             "feedback": "Avaliação",
         },
+        column_order=["timestamp", "sessao", "pergunta", "resposta", "feedback"],
         hide_index=True,
     )
 # endregion
