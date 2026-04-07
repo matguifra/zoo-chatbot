@@ -3,6 +3,13 @@ from st_supabase_connection import SupabaseConnection
 
 # Inicializa a conexão
 conn = st.connection("supabase", type=SupabaseConnection)
+# Login para autorizar SELECT, INSERT, UPDATE
+conn.client.auth.sign_in_with_password(
+    {
+        "email": st.secrets["credentials"]["EMAIL"],
+        "password": st.secrets["credentials"]["PASSWORD"],
+    }
+)
 
 
 # Função para salvar a pergunta e resposta no banco de dados
