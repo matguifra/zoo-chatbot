@@ -1,11 +1,4 @@
-import uuid
-
 import streamlit as st
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
-
-import config
-import database as db
 
 # region PASSWORD
 # -----------------------------------
@@ -24,32 +17,25 @@ if not st.session_state.password:
     st.stop()
 # endregion
 
-# region PAGE
-# -----------------------
-# CONFIGURAÇÃO DA PÁGINA
-# -----------------------
-st.set_page_config(
-    page_title=f"Recinto do {config.ANIMAL_NOME}",
-    page_icon=config.ANIMAL_EMOJI,
-    layout="centered",
-)
+# region IMPORTS & CONFIG
+# -----------------------------------
+# IMPORTAÇÕES E CONFIGURAÇÕES GERAIS
+# -----------------------------------
+# Importa bibliotecas depois da senha para fins de performance
+import uuid
 
-# --- BOTÃO PARA NOVA SESSÃO ---
-with st.sidebar:
-    st.header("⚙️ Controle do Totem")
-    if st.button("🔄 Novo Visitante / Limpar Chat", use_container_width=True):
-        st.session_state.messages = []
-        st.session_state.sessao_id = str(uuid.uuid4())
-        st.session_state.ultimo_id_db = None
-        st.rerun()
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
-# --- TÍTULO E BOAS VINDAS ---
-st.title(f"{config.ANIMAL_EMOJI} Recinto do {config.ANIMAL_NOME}")
-st.caption(f"*{config.ANIMAL_NOME_CIENTIFICO}*")
-st.markdown("Olá! Sou seu guia virtual. Pergunte qualquer coisa sobre os **leões**!")
-st.divider()
+import config
+import database as db
 
 # --- INICIALIZAÇÃO DE ESTADO (SESSION STATE) ---
+if "config" not in st.session_state:
+    st.session_state.config = config.setup()
+
+# Variável auxiliar para acessar as configurações do animal e do prompt de sistema
+CONFIG = st.session_state.config
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -59,6 +45,37 @@ if "sessao_id" not in st.session_state:
 
 if "ultimo_id_db" not in st.session_state:
     st.session_state.ultimo_id_db = None
+# endregion
+
+# region PAGE
+# -----------------------
+# CONFIGURAÇÃO DA PÁGINA
+# -----------------------
+st.set_page_config(
+    page_title=f"Recinto do {CONFIG['NOME']}",
+    page_icon=CONFIG["EMOJI"],
+    layout="centered",
+)
+
+# --- BOTÃO PARA NOVA SESSÃO ---
+with st.sidebar:
+    st.header("⚙️ Controle do Totem")
+    if st.button("🔄 Novo Visitante / Limpar Chat", use_container_width=True):
+        # Variáveis que precisamos manter ativas para usabilidade
+        whitelist = ["password"]
+        # Limpamos o session state, exceto as chaves da whitelist
+        for key in st.session_state.keys():
+            if key not in whitelist:
+                del st.session_state[key]
+        st.rerun()
+
+# --- TÍTULO E BOAS VINDAS ---
+st.title(f"{CONFIG['EMOJI']} Recinto do {CONFIG['NOME']}")
+st.caption(f"*{CONFIG['NOME_CIENTIFICO']}*")
+st.markdown(
+    f"Olá! Sou seu guia virtual. Pergunte qualquer coisa sobre: {CONFIG['NOME']}!"
+)
+st.divider()
 
 # --- EXIBE O HISTÓRICO DE MENSAGENS ---
 for msg in st.session_state.messages:
@@ -71,7 +88,7 @@ for msg in st.session_state.messages:
 # LANGCHAIN + GROQ + SUPABASE
 # ----------------------------
 # Campo de input do chat. Se há input, entra no if.
-if prompt := st.chat_input(f"Pergunte sobre o {config.ANIMAL_NOME}..."):
+if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
     # Salva e exibe a mensagem do usuário
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -79,7 +96,7 @@ if prompt := st.chat_input(f"Pergunte sobre o {config.ANIMAL_NOME}..."):
 
     # Monta a lista de mensagens para o LangChain
     langchain_messages: list[BaseMessage] = [
-        SystemMessage(content=config.SYSTEM_PROMPT)
+        SystemMessage(content=CONFIG["SYSTEM_PROMPT"])
     ]
     for msg in st.session_state.messages:
         if msg["role"] == "user":
@@ -88,11 +105,7 @@ if prompt := st.chat_input(f"Pergunte sobre o {config.ANIMAL_NOME}..."):
             langchain_messages.append(AIMessage(content=msg["content"]))
 
     # Instancia o modelo via Groq
-    llm = ChatGroq(
-        api_key=st.secrets["GROQ_API_KEY"],
-        model=config.MODEL_NAME,
-        temperature=config.TEMPERATURE,
-    )
+    llm = config.get_llm()
 
     # --- EXIBIÇÃO DA RESPOSTA E ARMAZENAGEM DA CONVERSA NO SUPABASE ---
     with st.chat_message("assistant"):
@@ -105,7 +118,7 @@ if prompt := st.chat_input(f"Pergunte sobre o {config.ANIMAL_NOME}..."):
             st.session_state.ultimo_id_db = db.salvar_pergunta(
                 sessao=st.session_state.sessao_id,
                 modelo=config.MODEL_NAME,
-                animal=config.ANIMAL_NOME,
+                animal=CONFIG["NOME"],
                 pergunta=prompt,
                 resposta=response.content,
             )
