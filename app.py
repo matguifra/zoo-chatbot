@@ -70,10 +70,10 @@ with st.sidebar:
         st.rerun()
 
 # --- TÍTULO E BOAS VINDAS ---
-st.title(f"{CONFIG['EMOJI']} Recinto do {CONFIG['NOME']}")
+st.title(f"{CONFIG['EMOJI']} Animal do recinto: {CONFIG['NOME']}")
 st.caption(f"*{CONFIG['NOME_CIENTIFICO']}*")
 st.markdown(
-    f"Olá! Sou seu guia virtual. Pergunte qualquer coisa sobre: {CONFIG['NOME']}!"
+    "Olá! Sou seu guia virtual. Pergunte qualquer coisa sobre a espécie neste recinto!"
 )
 st.divider()
 
