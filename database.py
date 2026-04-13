@@ -1,7 +1,7 @@
 import streamlit as st
 from st_supabase_connection import SupabaseConnection
 
-# Inicializa a conexão
+# Inicializa a conexão com o Supabase usando as credenciais do secrets.toml
 conn = st.connection("supabase", type=SupabaseConnection)
 # Login para autorizar SELECT, INSERT, UPDATE
 conn.client.auth.sign_in_with_password(
@@ -11,17 +11,22 @@ conn.client.auth.sign_in_with_password(
     }
 )
 
+# ------------------------------------------------------------------------------------
+# O banco de dados tem 2 tabelas:
+# 1. conversas: cada linha é um par pergunta-resposta
+# 2. aproximacoes: cada linha é ou uma aproximação / afastamento do sensor de presença
+# ------------------------------------------------------------------------------------
 
-# Função para salvar a pergunta e resposta no banco de dados
-def salvar_pergunta(sessao, modelo, animal, pergunta, resposta):
-    """Insere a pergunta e resposta no Supabase e retorna o ID do registro criado"""
+
+# Função para salvar a pergunta no banco de dados
+def insert_pergunta(sessao, modelo, animal, pergunta):
+    """Insere a pergunta na tabela 'conversas' e retorna o ID do registro criado"""
     try:
         log_data = {
             "sessao": sessao,
             "modelo": modelo,
             "animal": animal,
             "pergunta": pergunta,
-            "resposta": resposta,
         }
         res = conn.table("conversas").insert(log_data).execute()
         if res.data:
@@ -31,17 +36,36 @@ def salvar_pergunta(sessao, modelo, animal, pergunta, resposta):
     return None
 
 
-# Função para atualizar o feedback no banco de dados
-def atualizar_feedback(id_log, feedback):
-    """Atualiza a coluna de feedback"""
-    if id_log and feedback is not None:
+# Função para salvar a resposta no banco de dados
+def insert_resposta(conversas_id, resposta):
+    """Insere a resposta do modelo usando UPDATE no registro correspondente"""
+    try:
+        conn.table("conversas").update({"resposta": resposta}).eq(
+            "id", conversas_id
+        ).execute()
+    except Exception as e:
+        st.error(f"Erro ao salvar resposta: {e}")
+
+
+# Função para salvar o feedback no banco de dados
+def insert_feedback(conversas_id, feedback):
+    """Insere o feedback usando UPDATE no registro correspondente"""
+    if conversas_id and feedback is not None:
         voto = True if feedback == 1 else False  # Lógica booleana solicitada
         try:
             conn.table("conversas").update({"feedback": voto}).eq(
-                "id", id_log
+                "id", conversas_id
             ).execute()
         except Exception as e:
             st.error(f"Erro no feedback: {e}")
+
+
+# Função auxiliar para callback do `st.feedback`
+def feedback_callback(index):
+    """Callback para o st.feedback, que salva o feedback no banco de dados"""
+    conversas_id = st.session_state.messages[index].get("conversas_id")
+    feedback = st.session_state.get(f"feedback_{index}")
+    insert_feedback(conversas_id=conversas_id, feedback=feedback)
 
 
 # Usamos o cache de 60 segundos para não queimar API do Supabase.

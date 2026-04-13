@@ -78,9 +78,16 @@ st.markdown(
 st.divider()
 
 # --- EXIBE O HISTÓRICO DE MENSAGENS ---
-for msg in st.session_state.messages:
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg["role"] == "assistant":
+            st.feedback(
+                "thumbs",
+                key=f"feedback_{i}",
+                on_change=db.feedback_callback,
+                args=[i],
+            )
 # endregion
 
 # region CORE
@@ -89,8 +96,16 @@ for msg in st.session_state.messages:
 # ----------------------------
 # Campo de input do chat. Se há input, entra no if.
 if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
-    # Salva e exibe a mensagem do usuário
+    # Salva a pergunta no banco de dados
+    conversas_id = db.insert_pergunta(
+        sessao=st.session_state.sessao_id,
+        modelo=config.MODEL_NAME,
+        animal=CONFIG["NOME"],
+        pergunta=prompt,
+    )
+    # Salva a pergunta no histórico de mensagens da sessão
     st.session_state.messages.append({"role": "user", "content": prompt})
+    # Exibe a pergunta no chat
     with st.chat_message("user"):
         st.markdown(prompt)
 
@@ -107,31 +122,26 @@ if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
     # Instancia o modelo via Groq
     llm = config.get_llm()
 
-    # --- EXIBIÇÃO DA RESPOSTA E ARMAZENAGEM DA CONVERSA NO SUPABASE ---
+    #
     with st.chat_message("assistant"):
         with st.spinner("Pensando..."):
-            # Aquisição da resposta
-            response = llm.invoke(langchain_messages)
-            # Exibição da resposta
-            st.markdown(response.content)
-            # Salvamento da pergunta e resposta no banco de dados
-            st.session_state.ultimo_id_db = db.salvar_pergunta(
-                sessao=st.session_state.sessao_id,
-                modelo=config.MODEL_NAME,
-                animal=CONFIG["NOME"],
-                pergunta=prompt,
-                resposta=response.content,
+            # Aquisição e exibição da resposta
+            response = st.write_stream(llm.stream(langchain_messages))
+            # Salva a resposta no banco de dados
+            db.insert_resposta(conversas_id=conversas_id, resposta=response)
+            # Salva a resposta no histórico
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": response,
+                    "conversas_id": conversas_id,
+                }
             )
             # Botões de feedback que inserem avaliação no banco de dados
             st.feedback(
                 "thumbs",
-                key="feedback",
-                on_change=lambda: db.atualizar_feedback(
-                    id_log=st.session_state.ultimo_id_db,
-                    feedback=st.session_state.feedback,
-                ),
+                key=f"feedback_{len(st.session_state.messages) - 1}",
+                on_change=db.feedback_callback,
+                args=[len(st.session_state.messages) - 1],
             )
-
-    # Salva a resposta no histórico
-    st.session_state.messages.append({"role": "assistant", "content": response.content})
 # endregion

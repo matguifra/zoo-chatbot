@@ -11,7 +11,7 @@ from animals import ANIMALS
 
 # --- CONFIGURAÇÕES DA LLM ---
 MODEL_NAME = "openai/gpt-oss-120b"  # "llama-3.3-70b-versatile"
-TEMPERATURE = 0.5
+TEMPERATURE = 0.4
 
 
 @st.cache_resource
