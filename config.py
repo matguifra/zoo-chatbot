@@ -1,11 +1,12 @@
 # ===============================================================================
-# CONFIGURAÇÕES DO ANIMAL DO RECINTO E MODELO
-# Troque estas variáveis para adaptar o totem a outro animal
+# CONFIGURAÇÕES DA IA E DO ANIMAL DO RECINTO
 # ==============================================================================
+import base64
 import random
 
 import streamlit as st
 from langchain_groq import ChatGroq
+from openai import OpenAI
 
 from animals import ANIMALS
 
@@ -14,17 +15,7 @@ MODEL_NAME = "openai/gpt-oss-120b"  # "llama-3.3-70b-versatile"
 TEMPERATURE = 0.4
 
 
-@st.cache_resource
-def get_llm() -> ChatGroq:
-    """Função para instanciar a LLM."""
-    return ChatGroq(
-        api_key=st.secrets["GROQ_API_KEY"],
-        model=MODEL_NAME,
-        temperature=TEMPERATURE,
-    )
-
-
-def setup():
+def setup() -> dict[str, str]:
     """Escolhe um animal aleatório e monta a configuração para a sessão."""
     # Escolhe um animal aleatório da lista de animais disponíveis
     animal = random.choice(ANIMALS)
@@ -40,9 +31,10 @@ Você é um Especialista em Zoologia e Educador Ambiental sênior. Sua função 
 3. FOCO: Mantenha as respostas focadas no animal em questão. Se o visitante perguntar sobre algo não relacionado a animais ou ao zoológico, gentilmente traga o assunto de volta para a vida selvagem.
 
 ### TOM E ESTILO
-- Educativo e Acessível: Use uma linguagem clara. Evite jargões excessivamente complexos sem explicá-los.
-- Conciso: Respostas para totens devem ser nem muito longas, para não gerar filas no local, e nem muito curtas, para o visitante não achar desinteressante. Tente manter a resposta entre 2 e 4 parágrafos curtos. Use tópicos (bullet points) se precisar listar curiosidades, para facilitar a leitura rápida no totem.
-- Incentivador: Estimule a curiosidade e o respeito pela natureza e conservação.
+- Educativo e Acessível: Use uma linguagem clara. Evite jargões excessivamente complexos.
+- Conversacional e Falado: Suas respostas serão lidas em voz alta por um sistema de Text-to-Speech (TTS). Escreva de forma natural, como se estivesse conversando diretamente com o visitante.
+- Ultra Conciso e Direto: Limite a resposta a, no máximo, 2 parágrafos bem curtos (idealmente de 2 a 3 frases cada). O visitante está em pé em um totem e precisa de respostas ágeis.
+- Incentivador: Estimule a curiosidade e o respeito pela natureza com entusiasmo na voz.
 
 ### SEGURANÇA E ÉTICA
 - Não responda a perguntas ofensivas ou inadequadas.
@@ -55,3 +47,59 @@ Você é um Especialista em Zoologia e Educador Ambiental sênior. Sua função 
         "NOME_CIENTIFICO": animal["nome_cientifico"],
         "SYSTEM_PROMPT": system_prompt,
     }
+
+
+@st.cache_resource
+def get_llm() -> ChatGroq:
+    """Função para instanciar a LLM usando cache_resource."""
+    return ChatGroq(
+        api_key=st.secrets["GROQ_API_KEY"],
+        model=MODEL_NAME,
+        temperature=TEMPERATURE,
+    )
+
+
+@st.cache_resource
+def get_openai_client() -> OpenAI:
+    """Função para instanciar o cliente da OpenAI usando cache_resource."""
+    return OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+
+def gerar_audio_openai(texto) -> str:
+    """
+    Gera um componente de áudio HTML em formato base64 usando a API de TTS da OpenAI.
+    O retorno é uma tag de áudio configurada para reprodução automática.
+    """
+    # Instancia o cliente da OpenAI utilizando o cache_resource para otimizar o desempenho e evitar re-instanciações desnecessárias
+    client = get_openai_client()
+
+    try:
+        # Envia a requisição síncrona para a API de geração de fala
+        response = client.audio.speech.create(
+            input=texto,  # O texto gerado pela LLM
+            model="gpt-4o-mini-tts",  # alternativa: "tts-1" (lembre-se de tirar o parametro instructions)
+            voice="nova",  # Perfil de voz feminina, enérgica e clara
+            instructions="Fale em português brasileiro, sotaque paulista, de maneira animada.",  # Instruções para o estilo de fala
+            response_format="mp3",  # Formato mantido como mp3 para otimização da string Base64
+            speed=1.25,  # Velocidade de reprodução (1.0 é a velocidade normal)
+        )
+
+        # Extrai os dados binários do áudio retornado pela API
+        audio_binary = response.content
+
+        # Codifica os dados binários em texto seguro (Base64) para embutimento no HTML
+        audio_base64 = base64.b64encode(audio_binary).decode("utf-8")
+
+        # Constrói o elemento HTML nativo com a diretiva 'autoplay'
+        audio_html = f"""
+            <audio autoplay>
+                <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+            </audio>
+        """
+        return audio_html
+
+    except Exception as e:
+        # Em caso de falha na API ou rede, exibe o erro
+        st.error(f"⚠️ Erro ao gerar a voz do guia: {e}")
+        # Retorna um elemento HTML vazio para não causar erros visuais no components.html
+        return "<div></div>"

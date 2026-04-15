@@ -92,44 +92,51 @@ for i, msg in enumerate(st.session_state.messages):
 
 # region CORE
 # ----------------------------
-# LANGCHAIN + GROQ + SUPABASE
+# LANGCHAIN + GROQ + SUPABASE + OPENAI TTS
 # ----------------------------
-# Campo de input do chat. Se há input, entra no if.
+
+# Aguarda o input do visitante no campo de texto
 if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
-    # Salva a pergunta no banco de dados
+    # Registra a pergunta no banco de dados e recupera a chave primária da operação
     conversas_id = db.insert_pergunta(
         sessao=st.session_state.sessao_id,
         modelo=config.MODEL_NAME,
         animal=CONFIG["NOME"],
         pergunta=prompt,
     )
-    # Salva a pergunta no histórico de mensagens da sessão
+
+    # Atualiza o estado da sessão com a nova mensagem para renderização e histórico
     st.session_state.messages.append({"role": "user", "content": prompt})
-    # Exibe a pergunta no chat
+
+    # Renderiza visualmente a mensagem do usuário na interface de chat
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Monta a lista de mensagens para o LangChain
+    # Inicializa o array de contexto do LangChain com a instrução de comportamento do sistema
     langchain_messages: list[BaseMessage] = [
         SystemMessage(content=CONFIG["SYSTEM_PROMPT"])
     ]
+
+    # Transcreve o histórico local da sessão para o formato exigido pelo LangChain
     for msg in st.session_state.messages:
         if msg["role"] == "user":
             langchain_messages.append(HumanMessage(content=msg["content"]))
         else:
             langchain_messages.append(AIMessage(content=msg["content"]))
 
-    # Instancia o modelo via Groq
+    # Recupera o objeto de inferência (ChatGroq) a partir do cache de recursos
     llm = config.get_llm()
 
-    #
+    # Inicia a renderização da resposta do assistente
     with st.chat_message("assistant"):
         with st.spinner("Pensando..."):
-            # Aquisição e exibição da resposta
+            # Submete o contexto ao modelo e exibe o texto resultante progressivamente (stream)
             response = st.write_stream(llm.stream(langchain_messages))
-            # Salva a resposta no banco de dados
+
+            # Executa o fechamento da transação no banco de dados, incluindo a resposta
             db.insert_resposta(conversas_id=conversas_id, resposta=response)
-            # Salva a resposta no histórico
+
+            # Anexa a resposta definitiva ao estado da sessão, vinculando-a ao ID do banco
             st.session_state.messages.append(
                 {
                     "role": "assistant",
@@ -137,7 +144,14 @@ if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
                     "conversas_id": conversas_id,
                 }
             )
-            # Botões de feedback que inserem avaliação no banco de dados
+
+            # Aciona a função de conversão de texto em fala passando a resposta completa
+            audio_html = config.gerar_audio_openai(response)
+
+            # Injeta o código HTML invisível contendo a mídia; o autoplay inicia o som
+            st.components.v1.html(audio_html, height=0)  # type: ignore
+
+            # Instancia os controles de avaliação vinculando callbacks ao estado atual
             st.feedback(
                 "thumbs",
                 key=f"feedback_{len(st.session_state.messages) - 1}",
