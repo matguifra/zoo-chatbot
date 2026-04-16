@@ -1,19 +1,22 @@
 import streamlit as st
 
 # region PASSWORD
-# -----------------------------------
-# SENHA PARA PROTEGER A COTA DO GROQ
-# -----------------------------------
+# -------------------------------------------------------
+# SENHA PARA PROTEGER AS COTAS DE API DO GROQ E DA OPENAI
+# -------------------------------------------------------
 if "password" not in st.session_state:
     st.session_state.password = False
 
+# Se a senha não foi inserida corretamente, exibe o campo de input para a senha e bloqueia o acesso ao restante da aplicação
 if not st.session_state.password:
     pwd = st.text_input("Digite a senha:")
     if pwd == st.secrets["PASSWORD"]:
+        # Se a senha estiver correta, libera acesso
         st.session_state.password = True
         st.rerun()
     elif pwd:
         st.error("Senha incorreta.")
+    # Enquanto a senha não for inserida ou estiver incorreta, para a execução do código aqui
     st.stop()
 # endregion
 
@@ -30,58 +33,65 @@ import config
 import database as db
 
 # --- INICIALIZAÇÃO DE ESTADO (SESSION STATE) ---
+# Inicializa o totem com um animal e o prompt de sistema, armazenando-os no session state
 if "config" not in st.session_state:
     st.session_state.config = config.setup()
 
 # Variável auxiliar para acessar as configurações do animal e do prompt de sistema
 CONFIG = st.session_state.config
 
+# Inicializa o histórico de mensagens
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Identifica a sessão atual
 if "sessao_id" not in st.session_state:
-    # Gera o UUID da visita uma única vez
+    # Gera o UUID da visita
     st.session_state.sessao_id = str(uuid.uuid4())
-
-if "ultimo_id_db" not in st.session_state:
-    st.session_state.ultimo_id_db = None
 # endregion
 
 # region PAGE
 # -----------------------
 # CONFIGURAÇÃO DA PÁGINA
 # -----------------------
+
+# Configuração básica inicial da página, incluindo título e icone
 st.set_page_config(
     page_title=f"Recinto do {CONFIG['NOME']}",
     page_icon=CONFIG["EMOJI"],
-    layout="centered",
 )
 
 # --- BOTÃO PARA NOVA SESSÃO ---
-with st.sidebar:
-    st.header("⚙️ Controle do Totem")
-    if st.button("🔄 Novo Visitante / Limpar Chat", use_container_width=True):
-        # Variáveis que precisamos manter ativas para usabilidade
+with st.sidebar:  # Dentro da sidebar para não ocupar espaço do totem
+    # Botão que limpa a sessão atual
+    if st.button("🔄 Novo Visitante", use_container_width=True):
+        # Variáveis que precisam se manter ativas para usabilidade
         whitelist = ["password"]
-        # Limpamos o session state, exceto as chaves da whitelist
+        # Loop que limpa o session state, exceto as chaves da whitelist
         for key in st.session_state.keys():
             if key not in whitelist:
                 del st.session_state[key]
-        st.rerun()
+        st.rerun()  # Recarrega a página para refletir as mudanças no session state
 
 # --- TÍTULO E BOAS VINDAS ---
+# Descrição do animal no recinto
 st.title(f"{CONFIG['EMOJI']} Animal do recinto: {CONFIG['NOME']}")
+# Exibe o nome científico do animal em itálico como legenda
 st.caption(f"*{CONFIG['NOME_CIENTIFICO']}*")
+# Mensagem de boas-vindas e instrução para o visitante
 st.markdown(
     "Olá! Sou seu guia virtual. Pergunte qualquer coisa sobre a espécie neste recinto!"
 )
 st.divider()
 
 # --- EXIBE O HISTÓRICO DE MENSAGENS ---
+# Loop que enumera as mensagens no histórico da sessão, para índice
 for i, msg in enumerate(st.session_state.messages):
+    # Estiliza a mensagem de acordo com o autor (usuário ou assistente)
     with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-        if msg["role"] == "assistant":
+        st.markdown(msg["content"])  # Exibe a mensagem
+        if msg["role"] == "assistant":  # Caso o autor seja o assistente:
+            # Exibe o widget de feedback vinculado à mensagem, usando o índice gerado pelo enumerate
             st.feedback(
                 "thumbs",
                 key=f"feedback_{i}",
@@ -91,12 +101,40 @@ for i, msg in enumerate(st.session_state.messages):
 # endregion
 
 # region CORE
-# ----------------------------
-# LANGCHAIN + GROQ + SUPABASE + OPENAI TTS
-# ----------------------------
+# ---------------------------------------------------
+# LANGCHAIN + GROQ + SUPABASE + OPENAI TTS + GROQ TTS
+# ---------------------------------------------------
 
-# Aguarda o input do visitante no campo de texto
-if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
+# --- ENTRADA DO USUÁRIO ---
+# Caixa de input para o usuário digitar ou gravar áudio
+entrada_usuario = st.chat_input(
+    f"Pergunte sobre o {CONFIG['NOME']}...", accept_audio=True
+)
+
+# Declaração da variável que armazenará o prompt final a ser enviado para o modelo
+prompt = None
+
+if entrada_usuario:
+    # 1. Verifica se o usuário gravou um áudio
+    # A propriedade .audio retorna um objeto UploadedFile
+    if entrada_usuario.audio:
+        # O .read() extrai os bytes crus do arquivo WAV
+        audio_bytes = entrada_usuario.audio.read()
+
+        with st.spinner("Interpretando a sua voz..."):
+            # Manda o áudio para a transcrição
+            texto_transcrito = config.transcrever_audio_groq(audio_bytes)
+            # Se a transcrição for bem sucedida, define o prompt como o texto transcrito
+            if texto_transcrito:
+                prompt = texto_transcrito
+
+    # 2. Se não tem áudio, verifica se o usuário digitou texto
+    elif entrada_usuario.text:
+        # Se o usuário digitou texto, define o prompt como o texto digitado
+        prompt = entrada_usuario.text
+
+# Se há prompt, inicia o processo de resposta do assistente
+if prompt:
     # Registra a pergunta no banco de dados e recupera a chave primária da operação
     conversas_id = db.insert_pergunta(
         sessao=st.session_state.sessao_id,
@@ -151,7 +189,7 @@ if prompt := st.chat_input(f"Pergunte sobre o {CONFIG['NOME']}..."):
             # Injeta o código HTML invisível contendo a mídia; o autoplay inicia o som
             st.components.v1.html(audio_html, height=0)  # type: ignore
 
-            # Instancia os controles de avaliação vinculando callbacks ao estado atual
+            # Widget de feedback da resposta do assistente, vinculado à última mensagem de resposta
             st.feedback(
                 "thumbs",
                 key=f"feedback_{len(st.session_state.messages) - 1}",

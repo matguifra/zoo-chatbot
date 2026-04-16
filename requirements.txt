@@ -1,6 +1,9 @@
+# UI / Framework
 streamlit
+st-supabase-connection
+
+# LangChain + LLMs
+groq
 langchain
 langchain-groq
 openai
-st-supabase-connection
-uuid

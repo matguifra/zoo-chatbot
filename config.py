@@ -5,6 +5,7 @@ import base64
 import random
 
 import streamlit as st
+from groq import Groq
 from langchain_groq import ChatGroq
 from openai import OpenAI
 
@@ -77,7 +78,7 @@ def gerar_audio_openai(texto) -> str:
         # Envia a requisição síncrona para a API de geração de fala
         response = client.audio.speech.create(
             input=texto,  # O texto gerado pela LLM
-            model="gpt-4o-mini-tts",  # alternativa: "tts-1" (lembre-se de tirar o parametro instructions)
+            model="gpt-4o-mini-tts",  # alternativas: "tts-1" (sem `instructions`, mais neutra), "gpt-4o-mini-tts" (com `instructions`, mais expressiva)
             voice="nova",  # Perfil de voz feminina, enérgica e clara
             instructions="Fale em português brasileiro, sotaque paulista, de maneira animada.",  # Instruções para o estilo de fala
             response_format="mp3",  # Formato mantido como mp3 para otimização da string Base64
@@ -103,3 +104,31 @@ def gerar_audio_openai(texto) -> str:
         st.error(f"⚠️ Erro ao gerar a voz do guia: {e}")
         # Retorna um elemento HTML vazio para não causar erros visuais no components.html
         return "<div></div>"
+
+
+@st.cache_resource
+def get_groq_client() -> Groq:
+    """Função para instanciar o cliente da Groq usando cache_resource."""
+    return Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+
+def transcrever_audio_groq(audio_bytes: bytes) -> str:
+    """
+    Recebe os bytes de áudio do microfone e usa o modelo Whisper da Groq
+    para transcrever para texto em tempo real.
+    """
+    # Instancia o cliente da Groq utilizando o cache_resource para otimizar o desempenho e evitar re-instanciações desnecessárias
+    client = get_groq_client()
+
+    try:
+        # A API da Groq espera um formato de arquivo, passamos os bytes em memória
+        transcription = client.audio.transcriptions.create(
+            file=("audio.wav", audio_bytes),  # Nome fictício, o importante são os bytes
+            model="whisper-large-v3-turbo",  # Modelo super rápido e no seu Free Tier
+            prompt="O áudio está em português brasileiro.",  # Dica de contexto para o modelo
+            language="pt",
+        )
+        return transcription.text
+    except Exception as e:
+        st.error(f"⚠️ Erro ao ouvir: {e}")
+        return ""

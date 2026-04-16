@@ -74,10 +74,3 @@ def carregar_dados_do_banco():
     # Puxa todas as linhas da tabela "conversas"
     res = conn.table("conversas").select("*").execute()
     return res.data
-
-
-@st.cache_data(ttl=60)
-def sensor_de_presenca():
-    # Puxa todas as linhas da tabela "aproximacoes"
-    res = conn.table("aproximacoes").select("*").execute()
-    return res.data
