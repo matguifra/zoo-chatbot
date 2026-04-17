@@ -157,3 +157,16 @@ def transcrever_audio_groq(audio_bytes: bytes) -> str:
     except Exception as e:
         st.error(f"⚠️ Erro ao ouvir: {e}")
         return ""
+
+
+OBS = """\
+### Observações:
+
+- **Interface Híbrida:**
+    - **É necessário clicar novamente no ícone de microfone ao terminar de falar**. No totem físico, usaremos widget de áudio que detecta quando o visitante para de falar.
+    - O input de texto foi mantido estritamente para facilitar a avaliação, caso o avaliador não possa usar o microfone por algum motivo. No totem físico, a interface será só por captura de voz.
+- **Delay no TTS:**
+    - Há um delay de cerca de 5 segundos entre a chegada da resposta e a reprodução do áudio. Isso se deve ao uso de uma API da OpenAI de baixa prioridade (custo).
+- **Simulação de Hardware:**
+    - O botão "Novo Visitante" simula a saída do visitante (afastamento detectado pelo sensor de presença), reiniciando a sessão.
+"""

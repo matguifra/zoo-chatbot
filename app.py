@@ -97,6 +97,8 @@ with st.sidebar:  # Dentro da sidebar para não ocupar espaço do totem
             if key not in whitelist:
                 del st.session_state[key]
         st.rerun()  # Recarrega a página para refletir as mudanças no session state
+    st.divider()
+    st.info(config.OBS)
 
 # --- TÍTULO E BOAS VINDAS ---
 # Descrição do animal no recinto
