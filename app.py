@@ -40,7 +40,6 @@ if "config" not in st.session_state:
 
 # Se a configuração da sessão ainda não foi definida, exibe a tela de seleção do animal
 if st.session_state.config is None:
-    st.markdown("Animal no recinto:")
     # Puxa a lista de nomes de animais
     options = config.nomes_animais()
     # Caixa de seleção para escolher o animal
@@ -141,6 +140,7 @@ entrada_usuario = st.chat_input(
 # Declaração da variável que armazenará o prompt final a ser enviado para o modelo
 prompt = None
 
+# Se houve interação do usuário
 if entrada_usuario:
     # 1. Verifica se o usuário gravou um áudio
     # A propriedade .audio retorna um objeto UploadedFile

@@ -148,10 +148,10 @@ def transcrever_audio_groq(audio_bytes: bytes) -> str:
     try:
         # A API da Groq espera um formato de arquivo, passamos os bytes em memória
         transcription = client_groq.audio.transcriptions.create(
-            file=("audio.wav", audio_bytes),  # Nome fictício, o importante são os bytes
-            model="whisper-large-v3-turbo",  # Modelo super rápido e no seu Free Tier
+            file=("audio.wav", audio_bytes),  # Bytes do áudio
+            model="whisper-large-v3-turbo",  # Modelo com menos latência
             prompt="O áudio está em português brasileiro.",  # Dica de contexto para o modelo
-            language="pt",
+            language="pt",  # Especifica o idioma para melhorar a precisão
         )
         return transcription.text
     except Exception as e:
@@ -168,5 +168,5 @@ OBS = """\
 - **Delay no TTS:**
     - Há um delay de cerca de 5 segundos entre a chegada da resposta e a reprodução do áudio. Isso se deve ao uso de uma API da OpenAI de baixa prioridade (custo).
 - **Simulação de Hardware:**
-    - O botão "Novo Visitante" simula a saída do visitante (afastamento detectado pelo sensor de presença), reiniciando a sessão.
+    - O botão "Novo Visitante" simula a saída do visitante (afastamento detectado pelo sensor de presença), reiniciando a sessão.\
 """
