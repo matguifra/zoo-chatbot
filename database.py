@@ -3,7 +3,7 @@ from st_supabase_connection import SupabaseConnection
 
 
 # --- CONFIGURAÇÕES DE BANCO DE DADOS ---
-@st.cache_resource(ttl=3000)
+# @st.cache_resource(ttl=3000)
 def init_connection() -> SupabaseConnection:
     """
     Inicia conexão com o Supabase usando as credenciais do secrets.toml, faz login para autorizar SELECT, INSERT, UPDATE, e retorna o objeto de conexão.
