@@ -1,8 +1,7 @@
-# ===============================================================================
+# ==========================================
 # CONFIGURAÇÕES DA IA E DO ANIMAL DO RECINTO
-# ==============================================================================
+# ==========================================
 import base64
-import random
 
 import streamlit as st
 from groq import Groq
@@ -12,14 +11,31 @@ from openai import OpenAI
 from animals import ANIMALS
 
 # --- CONFIGURAÇÕES DA LLM ---
-MODEL_NAME = "openai/gpt-oss-120b"  # "llama-3.3-70b-versatile"
+# Nome do modelo no Groq
+MODEL_NAME = "openai/gpt-oss-120b"
+# Temperatura para comportamento mais factual, restringindo halucinações
 TEMPERATURE = 0.4
 
 
-def setup() -> dict[str, str]:
-    """Escolhe um animal aleatório e monta a configuração para a sessão."""
-    # Escolhe um animal aleatório da lista de animais disponíveis
-    animal = random.choice(ANIMALS)
+# Função que retorna a lista de nomes dos animais, usando cache para otimização
+@st.cache_data
+def nomes_animais() -> list[str]:
+    """Função para extrair e retornar a lista de nomes dos animais, usando cache_data para otimização."""
+    return [animal["nome"] for animal in ANIMALS]
+
+
+# Função que configura a sessão para o animal em questão
+def setup(nome_animal: str) -> dict[str, str]:
+    """Função que retorna um dicionário com informações do animal passado como argumento."""
+    # Procura no arquivo de animais o animal recebido como argumento
+    for animal in ANIMALS:
+        # Se o nome do animal for encontrado
+        if animal["nome"] == nome_animal:
+            # Para a busca e segue para montar o system prompt
+            break
+    else:
+        # Se o animal não for encontrado, levanta um erro
+        raise ValueError(f"Animal '{nome_animal}' não encontrado.")
 
     # Montagem do system prompt usando as informações do animal escolhido
     system_prompt = f"""\
@@ -50,6 +66,7 @@ Você é um Especialista em Zoologia e Educador Ambiental sênior. Sua função 
     }
 
 
+# Função que instancia a LLM no Groq usando cache_resource para evitar re-instanciações desnecessárias
 @st.cache_resource
 def get_llm() -> ChatGroq:
     """Função para instanciar a LLM usando cache_resource."""
@@ -60,23 +77,27 @@ def get_llm() -> ChatGroq:
     )
 
 
+# Função que instancia o cliente da OpenAI usando cache_resource para evitar re-instanciações desnecessárias
 @st.cache_resource
 def get_openai_client() -> OpenAI:
     """Função para instanciar o cliente da OpenAI usando cache_resource."""
     return OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
+# Instancia o cliente da OpenAI utilizando o cache_resource para otimizar o desempenho e evitar re-instanciações desnecessárias
+client_openai = get_openai_client()
+
+
+# Função que gera o áudio em formato HTML usando a API de TTS da OpenAI
 def gerar_audio_openai(texto) -> str:
     """
     Gera um componente de áudio HTML em formato base64 usando a API de TTS da OpenAI.
     O retorno é uma tag de áudio configurada para reprodução automática.
     """
-    # Instancia o cliente da OpenAI utilizando o cache_resource para otimizar o desempenho e evitar re-instanciações desnecessárias
-    client = get_openai_client()
 
     try:
         # Envia a requisição síncrona para a API de geração de fala
-        response = client.audio.speech.create(
+        response = client_openai.audio.speech.create(
             input=texto,  # O texto gerado pela LLM
             model="gpt-4o-mini-tts",  # alternativas: "tts-1" (sem `instructions`, mais neutra), "gpt-4o-mini-tts" (com `instructions`, mais expressiva)
             voice="nova",  # Perfil de voz feminina, enérgica e clara
@@ -106,23 +127,27 @@ def gerar_audio_openai(texto) -> str:
         return "<div></div>"
 
 
+# Função que instancia o cliente da Groq usando cache_resource para evitar re-instanciações desnecessárias
 @st.cache_resource
 def get_groq_client() -> Groq:
     """Função para instanciar o cliente da Groq usando cache_resource."""
     return Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 
+# Instancia o cliente da Groq utilizando o cache_resource para otimizar o desempenho e evitar re-instanciações desnecessárias
+client_groq = get_groq_client()
+
+
+# Função que recebe os bytes de áudio do microfone e usa o modelo Whisper da Groq para transcrever para texto em tempo real
 def transcrever_audio_groq(audio_bytes: bytes) -> str:
     """
     Recebe os bytes de áudio do microfone e usa o modelo Whisper da Groq
     para transcrever para texto em tempo real.
     """
-    # Instancia o cliente da Groq utilizando o cache_resource para otimizar o desempenho e evitar re-instanciações desnecessárias
-    client = get_groq_client()
 
     try:
         # A API da Groq espera um formato de arquivo, passamos os bytes em memória
-        transcription = client.audio.transcriptions.create(
+        transcription = client_groq.audio.transcriptions.create(
             file=("audio.wav", audio_bytes),  # Nome fictício, o importante são os bytes
             model="whisper-large-v3-turbo",  # Modelo super rápido e no seu Free Tier
             prompt="O áudio está em português brasileiro.",  # Dica de contexto para o modelo

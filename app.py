@@ -32,10 +32,35 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 import config
 import database as db
 
-# --- INICIALIZAÇÃO DE ESTADO (SESSION STATE) ---
-# Inicializa o totem com um animal e o prompt de sistema, armazenando-os no session state
+# --- TELA DE SELEÇÃO DO ANIMAL NO RECINTO ---
+
+# Inicializa a variável de configuração da sessão
 if "config" not in st.session_state:
-    st.session_state.config = config.setup()
+    st.session_state.config = None
+
+# Se a configuração da sessão ainda não foi definida, exibe a tela de seleção do animal
+if st.session_state.config is None:
+    st.markdown("Animal no recinto:")
+    # Puxa a lista de nomes de animais
+    options = config.nomes_animais()
+    # Caixa de seleção para escolher o animal
+    selected_option = st.selectbox(
+        label="Selecione um animal para iniciar a sessão:",
+        options=options,
+        index=None,
+        placeholder="Selecione um animal para iniciar a sessão",
+        label_visibility="hidden",
+    )
+    # Se um animal foi selecionado
+    if selected_option:
+        # Configura a sessão para o animal do recinto
+        st.session_state.config = config.setup(selected_option)
+        # Recarrega a página
+        st.rerun()
+    # Enquanto o animal não for selecionado, o chatbot não carrega
+    st.stop()
+
+# --- INICIALIZAÇÃO DE ESTADO DA SESSÃO (SESSION STATE) ---
 
 # Variável auxiliar para acessar as configurações do animal e do prompt de sistema
 CONFIG = st.session_state.config
@@ -133,6 +158,9 @@ if entrada_usuario:
         # Se o usuário digitou texto, define o prompt como o texto digitado
         prompt = entrada_usuario.text
 
+# Instancia o objeto de inferência (ChatGroq) a partir do cache de recursos
+llm = config.get_llm()
+
 # Se há prompt, inicia o processo de resposta do assistente
 if prompt:
     # Registra a pergunta no banco de dados e recupera a chave primária da operação
@@ -161,9 +189,6 @@ if prompt:
             langchain_messages.append(HumanMessage(content=msg["content"]))
         else:
             langchain_messages.append(AIMessage(content=msg["content"]))
-
-    # Recupera o objeto de inferência (ChatGroq) a partir do cache de recursos
-    llm = config.get_llm()
 
     # Inicia a renderização da resposta do assistente
     with st.chat_message("assistant"):

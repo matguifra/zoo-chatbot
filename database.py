@@ -1,21 +1,35 @@
 import streamlit as st
 from st_supabase_connection import SupabaseConnection
 
-# Inicializa a conexão com o Supabase usando as credenciais do secrets.toml
-conn = st.connection("supabase", type=SupabaseConnection)
-# Login para autorizar SELECT, INSERT, UPDATE
-conn.client.auth.sign_in_with_password(
-    {
-        "email": st.secrets["credentials"]["EMAIL"],
-        "password": st.secrets["credentials"]["PASSWORD"],
-    }
-)
+
+# --- CONFIGURAÇÕES DE BANCO DE DADOS ---
+@st.cache_resource
+def init_connection() -> SupabaseConnection:
+    """
+    Inicia conexão com o Supabase usando as credenciais do secrets.toml, faz login para autorizar SELECT, INSERT, UPDATE, e retorna o objeto de conexão.
+    Usa `@st.cache_resource` para impedir re-instanciações desnecessárias.
+    """
+    # Inicializa a conexão com o Supabase usando as credenciais do secrets.toml
+    conn = st.connection("supabase", type=SupabaseConnection)
+    # Login para autorizar SELECT, INSERT, UPDATE
+    conn.client.auth.sign_in_with_password(
+        {
+            "email": st.secrets["credentials"]["EMAIL"],
+            "password": st.secrets["credentials"]["PASSWORD"],
+        }
+    )
+    return conn
+
+
+conn = init_connection()
 
 # ------------------------------------------------------------------------------------
 # O banco de dados tem 2 tabelas:
 # 1. conversas: cada linha é um par pergunta-resposta
 # 2. aproximacoes: cada linha é ou uma aproximação / afastamento do sensor de presença
 # ------------------------------------------------------------------------------------
+
+# --- FUNÇÕES DE INTERAÇÃO COM O BANCO DE DADOS ---
 
 
 # Função para salvar a pergunta no banco de dados
